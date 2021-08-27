@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="df1be235-3c8a-40cb-b6f6-fd862281f5e3" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="a57c9fb6-353d-4899-b7be-dff8004ebd5a" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="admin" database="mule" />
+	</db:config>
+	<flow name="getflights" doc:id="537aa17e-8550-46da-9e5d-4c109be9a029" >
+		<db:select doc:name="Select" doc:id="7aadef97-1af1-4bb9-802f-235b3fc19458" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT * FROM australianflightsapi]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="beaed133-c847-44fe-9667-0ef47cc7df91" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	ID: payload01.ID,
+	code: (payload01.code default "") ++ payload01.code2,
+	price: payload01.price,
+	departureDate: payload01.takeofDate,
+	origin: trim ( payload01.fromAirport default'' ),
+	destination: payload01.toAirport,
+	emptySeats: payload01.seatsavailable as Number,
+	plane: {
+		"type": payload01.Airlinesname,
+		totalSeats: payload01.Totalseats as Number
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getflightsbyID" doc:id="9baee684-f8a2-4322-ac84-0725bbfe0be4" >
+		<db:select doc:name="Copy_of_Select" doc:id="ae466788-4db2-4aa6-9e29-7052a49cd405" config-ref="Database_Config" >
+			<db:sql ><![CDATA[SELECT * FROM australianflightsapi where ID=:ID]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{'ID':attributes.uriParams.ID}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="5c3c4323-618a-4d48-9068-79cc25c9c502" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	ID: payload01.ID,
+	code: (payload01.code default "") ++ payload01.code2,
+	price: payload01.price,
+	departureDate: payload01.takeofDate,
+	origin: trim ( payload01.fromAirport default'' ),
+	destination: payload01.toAirport,
+	emptySeats: payload01.seatsavailable as Number,
+	plane: {
+		"type": payload01.Airlinesname,
+		totalSeats: payload01.Totalseats as Number
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="Postflight" doc:id="2fdb95d5-1b55-48d5-9bc4-56d77530a058" >
+		<set-payload value='{"message": "Flight added (but not really)"}' doc:name="Set Payload" doc:id="e7524a86-4d89-4974-97b9-edba591e2dba" />
+	</flow>
+</mule>
